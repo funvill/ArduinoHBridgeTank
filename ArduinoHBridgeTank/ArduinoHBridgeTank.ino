@@ -125,6 +125,9 @@ void loop()
 
 void CheckInput() {
   while (Serial.available() > 0) {
+    // DEBUG_SERAL.println( Serial.read(), HEX ) ; 
+    // return ; 
+    
     int motorID = Serial.parseInt();
     int motorDirection = Serial.parseInt();
     int motorSpeed = Serial.parseInt();
