@@ -4,9 +4,11 @@ const int SETTING_BAUD_RATE                 = 9600 ;
 const unsigned char MOTOR_A_PIN_I1        = 5 ; 
 const unsigned char MOTOR_A_PIN_I2        = 6 ; 
 const unsigned char MOTOR_A_PIN_SPEED     = 4 ; 
-const unsigned char MOTOR_B_PIN_I1        = 7 ; 
-const unsigned char MOTOR_B_PIN_I2        = 8 ; 
-const unsigned char MOTOR_B_PIN_SPEED      = 3 ; 
+const unsigned char MOTOR_B_PIN_I1        = 8 ; 
+const unsigned char MOTOR_B_PIN_I2        = 7 ; 
+const unsigned char MOTOR_B_PIN_SPEED     = 3 ; 
+
+#define DEBUG_SERAL   Serial 
 
 class CMotor {
   private: 
@@ -21,13 +23,13 @@ class CMotor {
       // Set the direction. 
       switch( this->motorDirection ) {
         case FORWARD: {
-            digitalWrite(this->i1Pin,LOW); // DC motor rotates clockwise
-            digitalWrite(this->i2Pin,HIGH);          
+            digitalWrite(this->i1Pin,HIGH); // DC motor rotates clockwise
+            digitalWrite(this->i2Pin,LOW);          
           break ; 
         }
         case BACKWARD: {
-            digitalWrite(this->i1Pin,HIGH); // DC motor rotates counter-clockwise
-            digitalWrite(this->i2Pin,LOW);          
+            digitalWrite(this->i1Pin,LOW); // DC motor rotates counter-clockwise
+            digitalWrite(this->i2Pin,HIGH);          
           break ; 
         }        
         default: 
@@ -90,27 +92,59 @@ class CMotor {
 CMotor motorA;
 CMotor motorB;
 
+static unsigned char inputState ; 
+
 void setup() {
+  Serial.begin(SETTING_BAUD_RATE); 
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for Leonardo only
+  }  
+  DEBUG_SERAL.println("FYI: Starting....");
+  
   motorA.Init( MOTOR_A_PIN_SPEED, MOTOR_A_PIN_I1, MOTOR_A_PIN_I2 ) ; 
   motorB.Init( MOTOR_B_PIN_SPEED, MOTOR_B_PIN_I1, MOTOR_B_PIN_I2 ) ; 
+
+  inputState = 0 ; 
 }
+
+// Input via serial 
+//    motor, Direction, speed, \n
+// 
+// Example: 
+//    "1,1,255\n" == Motor 1, Forward, full speed 
+//    "1,2,255\n" == Motor 1, Backward, full speed 
+//    "1,3,255\n" == Motor 1, Stop
+//    "2,1,255\n" == Motor 2, Forward, full speed 
+//    "2,2,255\n" == Motor 2, Backward, full speed 
+//    "2,3,255\n" == Motor 2, Stop
 
 void loop()
 {
-  motorA.Go( CMotor::FORWARD ); 
-  motorB.Go( CMotor::FORWARD );  
-  delay(1000);
+  CheckInput();   
+}
 
-  motorA.Go( CMotor::BACKWARD ); 
-  motorB.Go( CMotor::BACKWARD );  
-  delay(1000);
+void CheckInput() {
+  while (Serial.available() > 0) {
+    int motorID = Serial.parseInt();
+    int motorDirection = Serial.parseInt();
+    int motorSpeed = Serial.parseInt();
+    DEBUG_SERAL.println("FYI: Set Motor ID="+ String( motorID ) + ", Direction="+  String( motorDirection )+", Speed=" + String( motorSpeed ) );
 
-  motorA.Go( CMotor::FORWARD ); 
-  motorB.Go( CMotor::BACKWARD );  
-  delay(1000);
-
-  motorA.Go( CMotor::STOP ); 
-  motorB.Go( CMotor::STOP );  
-  delay(1000);
- 
+    if (Serial.read() == '\n') {
+      switch( motorID ) {
+        case 1: {
+          motorA.Go( motorDirection, motorSpeed ); 
+          break ; 
+        }
+        case 2: {
+          motorB.Go( motorDirection, motorSpeed ); 
+          break ; 
+        }
+        default: {
+          DEBUG_SERAL.println("Error: unknown motorID="+String(motorID) );         
+          break ; 
+        }
+      }
+    }
+  }
 }
